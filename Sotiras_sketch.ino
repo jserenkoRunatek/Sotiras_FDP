@@ -33,7 +33,7 @@ void loop()
 {
   float voltage;
   unsigned long timepoint = millis();
-  if(millis()-timepoint > readDelay)
+  if((millis()-timepoint) > readDelay)
   {
     voltage = getVoltage();
     Serial.print("Voltage: ");
@@ -63,7 +63,7 @@ void stopMotor()
 void inject()
 {
   unsigned long timeRan = millis();
-  while(millis() - timeRan < injectTime)
+  while((millis() - timeRan) < injectTime)
   {
     extend();
   }
@@ -73,4 +73,5 @@ void inject()
 float getVoltage()
 {
   float voltage = analogRead(fromSensor)/1024.0*5000;
+  return voltage;
 }
