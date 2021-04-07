@@ -1,77 +1,87 @@
 #include "DFRobot_EC10.h"
+#include <EEPROM.h>
 
 //using named constants for pins
-const int pumpIn1 = 8;
-const int pumpIn2 = 7;
-const int ENA = 10;
-const int fromSensor = A0;
+#define enA 10
+#define in3 7
+#define in4 8
+#define EC_PIN A1
 
 //using named constants for parameters
-const float targetVoltage = 2.5f;
+const float targetEc = 65;
 const int readDelay = 1000;
 const int injectTime = 250;
 const int period = 0;
-
+float voltage = 0;
+float ecValue;
+float temperature = 25;
 //makes instance of object "DFRobot_EC10", used for the probe
 DFRobot_EC10 ec;
 
-void setup() 
+void setup()
 {
   //set all pins to either input or output
-  pinMode(pumpIn1, OUTPUT);
-  pinMode(pumpIn2, OUTPUT);
-  pinMode(ENA, OUTPUT);
-  pinMode(fromSensor, INPUT);
+  pinMode(in3, OUTPUT);
+  pinMode(in4, OUTPUT);
+  pinMode(enA, OUTPUT);
+  pinMode(EC_PIN, INPUT);
   //set PWM full throtle
-  digitalWrite(ENA, 100);
+  analogWrite(enA, 255);
+  Serial.begin(115200);
   //starts instance of "DFRobot_EC10"
+
   ec.begin();
 
 }
 
-void loop() 
+void loop()
 {
-  float voltage;
-  unsigned long timepoint = millis();
-  if((millis()-timepoint) > readDelay)
+  static unsigned long timepoint = millis();
+  if (millis() - timepoint > 1000U) //time interval: 1s
   {
-    voltage = getVoltage();
-    Serial.print("Voltage: ");
+    timepoint = millis();
+    voltage = analogRead(EC_PIN) * 0.72; // read the voltage
+    Serial.print("voltage:");
     Serial.print(voltage);
-      if(voltage < targetVoltage)
-      {
-        inject();
-      }
+    //temperature = readTemperature();  // read your temperature sensor to execute temperature compensation
+    ecValue =  ec.readEC(voltage, temperature); // convert voltage to EC with temperature compensation
+    Serial.print("  temperature:");
+    Serial.print(temperature, 1);
+    Serial.print("^C  EC:");
+    Serial.print(ecValue, 1);
+    Serial.println("ms/cm");
+  }
+  ec.calibration(voltage, temperature);
+  if (ecValue < targetEc)
+  {
+    //Serial.print("Branch!!!\n"); //remove comment in case of screw up
+    digitalWrite(in3, HIGH);
+    digitalWrite(in4, LOW);
+    delay(injectTime);
+    stopMotor();
   }
 }
 
 void extend()
 {
-  digitalWrite(pumpIn1, HIGH);
-  digitalWrite(pumpIn2, LOW);
+  digitalWrite(in3, HIGH);
+  digitalWrite(in4, LOW);
 }
 void retract()
 {
-  digitalWrite(pumpIn1, LOW);
-  digitalWrite(pumpIn2, HIGH);
+  digitalWrite(in3, LOW);
+  digitalWrite(in4, HIGH);
 }
 void stopMotor()
 {
-  digitalWrite(pumpIn1, LOW);
-  digitalWrite(pumpIn2, LOW);
+  digitalWrite(in3, LOW);
+  digitalWrite(in3, LOW);
 }
 void inject()
 {
-  unsigned long timeRan = millis();
-  while((millis() - timeRan) < injectTime)
-  {
-    extend();
-  }
+  digitalWrite(in3, HIGH);
+  digitalWrite(in4, LOW);
+  delay(injectTime);
   stopMotor();
-  
-}
-float getVoltage()
-{
-  float voltage = analogRead(fromSensor)/1024.0*5000;
-  return voltage;
+
 }
